@@ -1,0 +1,30 @@
+#!/bin/bash
+#Humidity condensation table from
+#adjust as necessary
+#http://www.qualistat.com/Condensation.html
+
+location="cyyz"
+
+extTemp=$(/usr/bin/weather -m -q $location | grep Temperature | awk '{print $2}')
+#extTemp=$(grep Temperature /tmp/currentweather.log | awk '{print $2}')
+
+if [ "$extTemp" -le "-30" ]; then
+	humidity=16
+elif [ "$extTemp" -le "-24" -a "$extTemp" -ge "-29" ]; then
+	humidity=22
+elif [ "$extTemp" -le "-18" -a "$extTemp" -ge "-23" ]; then
+	humidity=24
+elif [ "$extTemp" -le "-13" -a "$extTemp" -ge "-17" ]; then
+	humidity=28
+elif [ "$extTemp" -le "-6" -a "$extTemp" -ge "-12" ]; then
+	humidity=33
+else
+	humidity=40
+fi
+
+echo Adjusting Humidity target to $humidity%
+nest-humidity.php $humidity
+
+exit 0
+
+
