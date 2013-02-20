@@ -3,10 +3,10 @@
 #adjust as necessary
 #http://www.qualistat.com/Condensation.html
 
-location="cyyz"
+#put in your Airport code i.e. cyyz for Toronto
+location=""
 
 extTemp=$(/usr/bin/weather -m -q $location | grep Temperature | awk '{print $2}')
-#extTemp=$(grep Temperature /tmp/currentweather.log | awk '{print $2}')
 
 if [ "$extTemp" -le "-30" ]; then
 	humidity=16
