@@ -1,2 +1,6 @@
 Nest-api from https://github.com/gboudreau/nest-api
-Requires "weather" command to get external temperature
+Display/Set humidity on your NEST thermostat
+
+usage:
+nest-humidity.php auto
+ - Sets your humidity target based on the outside temperature.  Algorithm sets a 5% target drop per every 10 degree C drop in outside temperature
