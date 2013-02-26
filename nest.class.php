@@ -50,7 +50,7 @@ class Nest {
 				'city' => $structure->location,
 				'postal_code' => $structure->postal_code,
 				'country' => $structure->country_code,
-				'outside_temperature' => (float) $weather->now->current_temperature,
+				'outside_temperature' => isset($weather->now) ? (float) $weather->now->current_temperature : NULL,
 				'away' => $structure->away,
 				'away_last_changed' => date('Y-m-d H:i:s', $structure->away_timestamp),
 				'thermostats' => array_map(array('Nest', 'cleanDevices'), $structure->devices)
@@ -66,7 +66,7 @@ class Nest {
 		$manual_away = $this->last_status->structure->{$structure}->away;
 		$mode = strtolower($this->last_status->device->{$serial_number}->current_schedule_mode);
 		$target_mode = $this->last_status->shared->{$serial_number}->target_temperature_type;
-		if ($manual_away || $mode == 'away' || $this->last_status->shared->{$serial_number}->auto_away !== 0) {
+		if ($manual_away || $mode == 'away' || $this->last_status->shared->{$serial_number}->auto_away > 0) {
 			$mode = $mode . ',away';
 			$target_mode = 'range';
 			$target_temperatures = array($this->last_status->device->{$serial_number}->away_temperature_low, $this->last_status->device->{$serial_number}->away_temperature_high);
@@ -110,14 +110,34 @@ class Nest {
 		return (object) array(
 			'online' => $connection_info->online,
 			'last_connection' => date('Y-m-d H:i:s', $connection_info->last_connection/1000),
-			'wan_ip' => $connection_info->last_ip,
+			'wan_ip' => isset($connection_info->last_ip) ? $connection_info->last_ip : NULL,
 			'local_ip' => $this->last_status->device->{$serial_number}->local_ip,
 			'mac_address' => $this->last_status->device->{$serial_number}->mac_address
 		);
 	}
 
-	public function setTargetTemperatureMode($mode, $serial_number=null) {
+	public function setTargetTemperatureMode($mode, $temperature, $serial_number=null) {
 	    $serial_number = $this->getDefaultSerial($serial_number);
+
+        if ($mode == TARGET_TEMP_MODE_RANGE) {
+            if (!is_array($temperature) || count($temperature) != 2 || !is_numeric($temperature[0]) || !is_numeric($temperature[1])) {
+                echo "Error: when using TARGET_TEMP_MODE_RANGE, you need to set the target temperatures (second argument of setTargetTemperatureMode) using an array of two numeric values.\n";
+                return FALSE;
+            }
+    	    $temp_low = $this->temperatureInCelsius($temperature[0], $serial_number);
+    		$temp_high = $this->temperatureInCelsius($temperature[1], $serial_number);
+    	    $data = json_encode(array('target_change_pending' => TRUE, 'target_temperature_low' => $temp_low, 'target_temperature_high' => $temp_high));
+    	    $set_temp_result = $this->doPOST("/v2/put/shared." . $serial_number, $data);
+        } else {
+            if (!is_numeric($temperature)) {
+                echo "Error: when using TARGET_TEMP_MODE_HEAT or TARGET_TEMP_MODE_COLD, you need to set the target temperature (second argument of setTargetTemperatureMode) using an numeric value.\n";
+                return FALSE;
+            }
+    	    $temperature = $this->temperatureInCelsius($temperature, $serial_number);
+    	    $data = json_encode(array('target_change_pending' => TRUE, 'target_temperature' => $temperature));
+    	    $set_temp_result = $this->doPOST("/v2/put/shared." . $serial_number, $data);
+        }
+
 	    $data = json_encode(array('target_change_pending' => TRUE, 'target_temperature_type' => $mode));
 	    return $this->doPOST("/v2/put/shared." . $serial_number, $data);
 	}
